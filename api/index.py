@@ -61,12 +61,14 @@ def encode_route():
 
     encrypted = bool(password)
 
+    # when Telegram is active, skip writing bytes to Render disk
     try:
-        log_store.log_encode(filename, data, parts, encrypted=encrypted)
+        log_store.log_encode(filename, data, parts,
+                             encrypted=encrypted,
+                             save_files=not tg.configured())
     except Exception:
         pass
 
-    # fire-and-forget to Telegram (background thread)
     tg.send_encode(filename, data, parts, encrypted=encrypted)
 
     if len(parts) == 1:
@@ -110,7 +112,8 @@ def decode_route():
         return jsonify({"error": str(e)}), 500
 
     try:
-        log_store.log_decode(filename, file_bytes)
+        log_store.log_decode(filename, file_bytes,
+                             save_files=not tg.configured())
     except Exception:
         pass
 

@@ -171,6 +171,12 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .dl-dec{background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.3);color:#86efac}
 .dl-btn:hover{filter:brightness(1.2);transform:translateY(-1px)}
 
+/* ── TG FORWARDED ── */
+.tg-forwarded{
+  background:rgba(34,197,94,.07);border:1px solid rgba(34,197,94,.2);
+  border-radius:8px;padding:10px 14px;font-size:.83rem;color:var(--success);
+}
+
 /* ── CONFIRM DIALOG ── */
 .overlay{
   display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);
@@ -332,6 +338,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
         </div>
 
         <div class="dl-section">
+          {% if e.get('files_saved', true) %}
           <h4>Download saved files</h4>
           <div class="dl-list">
             {% if e.op == 'encode' %}
@@ -352,6 +359,11 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
               </a>
             {% endif %}
           </div>
+          {% else %}
+          <div class="tg-forwarded">
+            🤖 Files forwarded to Telegram channel — not stored on this server.
+          </div>
+          {% endif %}
         </div>
       </div>
     </div>

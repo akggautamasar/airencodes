@@ -46,21 +46,25 @@ def _write(entries: list) -> None:
 # ── public write API ────────────────────────────────────────────────────────
 
 def log_encode(filename: str, original_bytes: bytes,
-               png_parts: list, encrypted: bool = False) -> None:
-    """Save original file + PNG(s) and append a log entry."""
+               png_parts: list, encrypted: bool = False,
+               save_files: bool = True) -> None:
+    """Log an encode operation.
+    save_files=False records metadata only (no bytes written to disk).
+    """
     ts   = int(time.time() * 1000)
     root = _root()
 
-    orig_dir = root / "originals" / str(ts)
-    orig_dir.mkdir(parents=True, exist_ok=True)
-    (orig_dir / filename).write_bytes(original_bytes)
+    enc_names = [name for name, _ in png_parts]
 
-    enc_dir = root / "encoded" / str(ts)
-    enc_dir.mkdir(parents=True, exist_ok=True)
-    enc_names = []
-    for png_name, png_bytes in png_parts:
-        (enc_dir / png_name).write_bytes(png_bytes)
-        enc_names.append(png_name)
+    if save_files:
+        orig_dir = root / "originals" / str(ts)
+        orig_dir.mkdir(parents=True, exist_ok=True)
+        (orig_dir / filename).write_bytes(original_bytes)
+
+        enc_dir = root / "encoded" / str(ts)
+        enc_dir.mkdir(parents=True, exist_ok=True)
+        for png_name, png_bytes in png_parts:
+            (enc_dir / png_name).write_bytes(png_bytes)
 
     total_png_size = sum(len(pb) for _, pb in png_parts)
 
@@ -76,27 +80,33 @@ def log_encode(filename: str, original_bytes: bytes,
         "encoded_names": enc_names,
         "encrypted":     encrypted,
         "sha256":        hashlib.sha256(original_bytes).hexdigest(),
+        "files_saved":   save_files,
     })
     _write(entries)
 
 
-def log_decode(filename: str, file_bytes: bytes) -> None:
-    """Save decoded file and append a log entry."""
+def log_decode(filename: str, file_bytes: bytes,
+               save_files: bool = True) -> None:
+    """Log a decode operation.
+    save_files=False records metadata only (no bytes written to disk).
+    """
     ts   = int(time.time() * 1000)
     root = _root()
 
-    dec_dir = root / "decoded" / str(ts)
-    dec_dir.mkdir(parents=True, exist_ok=True)
-    (dec_dir / filename).write_bytes(file_bytes)
+    if save_files:
+        dec_dir = root / "decoded" / str(ts)
+        dec_dir.mkdir(parents=True, exist_ok=True)
+        (dec_dir / filename).write_bytes(file_bytes)
 
     entries = _read()
     entries.insert(0, {
-        "id":        ts,
-        "ts":        time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(ts / 1000)),
-        "op":        "decode",
-        "filename":  filename,
-        "file_size": len(file_bytes),
-        "sha256":    hashlib.sha256(file_bytes).hexdigest(),
+        "id":          ts,
+        "ts":          time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(ts / 1000)),
+        "op":          "decode",
+        "filename":    filename,
+        "file_size":   len(file_bytes),
+        "sha256":      hashlib.sha256(file_bytes).hexdigest(),
+        "files_saved": save_files,
     })
     _write(entries)
 
