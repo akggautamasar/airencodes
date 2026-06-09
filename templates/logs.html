@@ -90,6 +90,14 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .tg-setup a:hover{text-decoration:underline}
 .tg-setup ol{padding-left:18px;margin-top:6px}
 .tg-setup code{background:rgba(255,255,255,.07);padding:1px 6px;border-radius:4px;font-size:.85em}
+.tg-vars{
+  margin-top:12px;display:grid;gap:6px;
+  background:rgba(0,0,0,.25);border-radius:8px;padding:12px 14px;
+}
+.tg-vars div{display:flex;align-items:center;gap:8px;font-size:.82rem;font-family:monospace}
+.tg-vars code{background:rgba(99,102,241,.2);color:#a5b4fc;padding:2px 8px;border-radius:4px}
+.tg-vars span{color:var(--muted)}
+.tg-vars em{color:var(--muted);font-style:normal}
 
 /* ── EMPTY STATE ── */
 .empty{
@@ -238,18 +246,24 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 
   {% if tg_configured %}
   <div class="tg-note">
-    🤖 <strong>Telegram channel active</strong> — every encoded and decoded file is automatically forwarded to your channel.
+    🤖 <strong>Telegram MTProto active</strong> — every encoded and decoded file is automatically forwarded to your channel (up to 2 GB per file).
   </div>
   {% else %}
   <div class="tg-setup">
-    <div class="tg-setup-title">🤖 Connect a Telegram channel</div>
-    <p>Set these two environment variables on Render to auto-forward every file:</p>
+    <div class="tg-setup-title">🤖 Connect a Telegram channel (MTProto — up to 2 GB)</div>
+    <p>Four environment variables are needed. Set them all on Render → Environment, then redeploy.</p>
     <ol>
+      <li>Go to <a href="https://my.telegram.org/apps" target="_blank">my.telegram.org/apps</a> → create an app → copy <strong>App api_id</strong> and <strong>App api_hash</strong></li>
       <li>Message <a href="https://t.me/BotFather" target="_blank">@BotFather</a> → <code>/newbot</code> → copy the token</li>
-      <li>Add the bot as an <strong>admin</strong> to your channel</li>
-      <li>Set <code>TELEGRAM_BOT_TOKEN</code> = <em>your token</em></li>
-      <li>Set <code>TELEGRAM_CHANNEL_ID</code> = <em>@yourchannel</em> or <em>-100xxxxxxxxxx</em></li>
+      <li>Create a Telegram channel, add the bot as an <strong>Admin</strong> (Post Messages permission)</li>
+      <li>Get the channel ID: for a public channel use <code>@username</code>; for private, forward any message to <a href="https://t.me/userinfobot" target="_blank">@userinfobot</a> to get the <code>-100…</code> numeric ID</li>
     </ol>
+    <div class="tg-vars">
+      <div><code>TELEGRAM_API_ID</code><span>=</span><em>12345678</em></div>
+      <div><code>TELEGRAM_API_HASH</code><span>=</span><em>0abc1def2…</em></div>
+      <div><code>TELEGRAM_BOT_TOKEN</code><span>=</span><em>7123456789:AAHxxx…</em></div>
+      <div><code>TELEGRAM_CHANNEL_ID</code><span>=</span><em>@yourchannel</em></div>
+    </div>
   </div>
   {% endif %}
 

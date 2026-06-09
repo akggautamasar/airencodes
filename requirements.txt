@@ -4,3 +4,5 @@ numpy>=1.24.0
 gunicorn>=21.0.0
 cryptography>=42.0.0
 requests>=2.31.0
+pyrogram>=2.0.0
+tgcrypto>=1.2.0
