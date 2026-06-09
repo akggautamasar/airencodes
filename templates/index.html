@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AirVault — Hide Files in PNG Images</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#08081a;
+  --surface:#111128;
+  --card:#16163a;
+  --border:#2a2a55;
+  --border-hover:#5a5aaa;
+  --accent:#6366f1;
+  --accent2:#22d3ee;
+  --text:#e0e0ff;
+  --muted:#7878aa;
+  --success:#22c55e;
+  --warn:#f59e0b;
+  --error:#ef4444;
+}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;min-height:100vh;overflow-x:hidden}
+
+/* ── HEADER ── */
+header{
+  padding:56px 24px 36px;
+  text-align:center;
+  position:relative;
+  overflow:hidden;
+}
+header::before{
+  content:'';position:absolute;top:-60px;left:50%;transform:translateX(-50%);
+  width:700px;height:400px;
+  background:radial-gradient(ellipse at 50% 30%,rgba(99,102,241,.18) 0%,transparent 70%);
+  pointer-events:none;
+}
+.brand{
+  font-size:3.2rem;font-weight:900;letter-spacing:-2px;
+  background:linear-gradient(135deg,#818cf8 0%,#22d3ee 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  display:inline-flex;align-items:center;gap:14px;
+}
+.brand-icon{font-size:2.8rem;-webkit-text-fill-color:initial}
+.tagline{color:var(--muted);font-size:1.05rem;margin-top:10px;line-height:1.5}
+
+/* ── MAIN ── */
+main{max-width:1000px;margin:0 auto;padding:0 20px 80px}
+
+/* ── CARDS ── */
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:36px}
+@media(max-width:680px){.cards{grid-template-columns:1fr}}
+
+.card{
+  background:var(--card);border:1px solid var(--border);border-radius:20px;
+  padding:32px;transition:border-color .25s;
+}
+.card:hover{border-color:var(--border-hover)}
+
+.card-header{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+.chip{
+  width:42px;height:42px;border-radius:12px;display:flex;align-items:center;
+  justify-content:center;font-size:1.3rem;flex-shrink:0;
+}
+.chip-enc{background:linear-gradient(135deg,#6366f1,#8b5cf6)}
+.chip-dec{background:linear-gradient(135deg,#06b6d4,#0284c7)}
+.card-title{font-size:1.45rem;font-weight:700}
+.card-desc{color:var(--muted);font-size:.88rem;line-height:1.6;margin-bottom:24px}
+
+/* ── DROP ZONE ── */
+.dz{
+  position:relative;border:2px dashed var(--border);border-radius:14px;
+  padding:36px 20px;text-align:center;cursor:pointer;
+  transition:border-color .2s,background .2s;
+}
+.dz:hover,.dz.over{border-color:var(--accent);background:rgba(99,102,241,.07)}
+.dz input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.dz-icon{font-size:2.6rem;display:block;margin-bottom:10px}
+.dz-text{color:var(--muted);font-size:.88rem}
+.dz-text b{color:var(--text)}
+.dz-chosen{margin-top:10px;font-size:.82rem;color:var(--accent2);word-break:break-all;line-height:1.4}
+
+/* ── BUTTON ── */
+.btn{
+  width:100%;padding:14px;border:none;border-radius:12px;font-size:.98rem;
+  font-weight:700;cursor:pointer;margin-top:16px;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  transition:filter .2s,transform .15s;
+}
+.btn:hover:not(:disabled){filter:brightness(1.12);transform:translateY(-1px)}
+.btn:active{transform:none}
+.btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.btn-enc{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff}
+.btn-dec{background:linear-gradient(135deg,#06b6d4,#0284c7);color:#fff}
+
+/* ── STATUS ── */
+.status{margin-top:14px;border-radius:10px;font-size:.875rem;display:none}
+.status.busy{
+  background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.3);
+  color:var(--accent2);display:flex;align-items:center;gap:10px;padding:12px 14px;
+}
+.status.ok{
+  background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);
+  color:var(--success);display:block;padding:12px 14px;
+}
+.status.err{
+  background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);
+  color:var(--error);display:block;padding:12px 14px;
+}
+.spin{
+  width:15px;height:15px;border:2px solid rgba(99,102,241,.3);
+  border-top-color:var(--accent2);border-radius:50%;
+  animation:spin .75s linear infinite;flex-shrink:0;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── DOWNLOAD BUTTON ── */
+.dl{
+  display:inline-flex;align-items:center;gap:7px;
+  padding:9px 18px;background:var(--success);color:#071a07;
+  font-weight:700;border-radius:8px;text-decoration:none;
+  font-size:.88rem;margin-top:9px;transition:filter .2s,transform .15s;
+}
+.dl:hover{filter:brightness(1.1);transform:translateY(-1px)}
+
+/* ── NOTE BANNER ── */
+.note{
+  background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);
+  border-radius:10px;padding:11px 14px;font-size:.82rem;
+  color:var(--warn);margin-top:14px;line-height:1.5;
+}
+
+/* ── HOW IT WORKS ── */
+.how{margin-top:64px;text-align:center}
+.how h2{font-size:1.6rem;font-weight:800;margin-bottom:30px;color:var(--text)}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+@media(max-width:600px){.steps{grid-template-columns:1fr}}
+.step{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px}
+.step-n{
+  width:34px;height:34px;border-radius:50%;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  display:flex;align-items:center;justify-content:center;
+  font-weight:800;font-size:.85rem;margin:0 auto 12px;
+}
+.step h3{font-size:.95rem;font-weight:700;margin-bottom:8px}
+.step p{color:var(--muted);font-size:.82rem;line-height:1.55}
+
+/* ── FOOTER ── */
+footer{
+  text-align:center;padding:28px;color:var(--muted);font-size:.8rem;
+  border-top:1px solid var(--border);margin-top:40px;
+}
+footer a{color:var(--muted);text-decoration:none}
+footer a:hover{color:var(--text)}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand"><span class="brand-icon">🔐</span>AirVault</div>
+  <p class="tagline">Hide any file inside a lossless PNG — SHA-256 verified, corruption-proof.</p>
+</header>
+
+<main>
+  <div class="cards">
+
+    <!-- ── ENCODE ── -->
+    <div class="card">
+      <div class="card-header">
+        <div class="chip chip-enc">📥</div>
+        <div class="card-title">Encode</div>
+      </div>
+      <p class="card-desc">
+        Upload any file (PDF, ZIP, video…). It will be hidden inside one or more
+        lossless PNG images. Large files are split and bundled as a ZIP.
+      </p>
+
+      <div class="dz" id="enc-dz">
+        <input type="file" id="enc-input" accept="*/*">
+        <span class="dz-icon">📄</span>
+        <div class="dz-text"><b>Click or drag</b> a file here</div>
+        <div class="dz-chosen" id="enc-chosen"></div>
+      </div>
+
+      <button class="btn btn-enc" id="enc-btn" disabled onclick="doEncode()">
+        🔒 Encode to PNG
+      </button>
+
+      <div class="status" id="enc-status"></div>
+
+      <div class="note">
+        ℹ️ Any file type supported. Files over ~33 MB are split into multiple PNG parts
+        and downloaded together as a ZIP. All parts are required to decode.
+      </div>
+    </div>
+
+    <!-- ── DECODE ── -->
+    <div class="card">
+      <div class="card-header">
+        <div class="chip chip-dec">📤</div>
+        <div class="card-title">Decode</div>
+      </div>
+      <p class="card-desc">
+        Upload the AirVault PNG(s). If the original was split into multiple parts,
+        upload all of them at once. Every byte is SHA-256 verified before saving.
+      </p>
+
+      <div class="dz" id="dec-dz">
+        <input type="file" id="dec-input" accept="image/png" multiple>
+        <span class="dz-icon">🖼️</span>
+        <div class="dz-text"><b>Click or drag</b> PNG file(s) here</div>
+        <div class="dz-chosen" id="dec-chosen"></div>
+      </div>
+
+      <button class="btn btn-dec" id="dec-btn" disabled onclick="doDecode()">
+        🔓 Decode to Original File
+      </button>
+
+      <div class="status" id="dec-status"></div>
+
+      <div class="note">
+        ℹ️ Upload all PNG parts together if the file was split. Decoding is aborted if
+        any part is missing or the checksum doesn't match.
+      </div>
+    </div>
+
+  </div><!-- /cards -->
+
+  <!-- ── HOW IT WORKS ── -->
+  <div class="how">
+    <h2>How it works</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-n">1</div>
+        <h3>Lossless PNG only</h3>
+        <p>Data is packed directly into RGB pixel channels. PNG never alters pixels, so data is never altered — unlike JPEG.</p>
+      </div>
+      <div class="step">
+        <div class="step-n">2</div>
+        <h3>SHA-256 verified</h3>
+        <p>Every chunk and the complete file gets a SHA-256 hash stored in the header. Decode refuses to output anything that doesn't match.</p>
+      </div>
+      <div class="step">
+        <div class="step-n">3</div>
+        <h3>Self-describing</h3>
+        <p>The original filename, part index, and both checksums are embedded in every PNG. Works even if the image is renamed or moved.</p>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  AirVault &nbsp;·&nbsp; corruption-proof file storage in PNG images
+</footer>
+
+<script>
+// ── state ────────────────────────────────────────────────────────────────
+let encFile = null;
+let decFiles = [];
+
+// ── drop-zone wiring ─────────────────────────────────────────────────────
+function wireDz(dzId, inputId, multi, onFiles) {
+  const dz    = document.getElementById(dzId);
+  const input = document.getElementById(inputId);
+
+  input.addEventListener('change', () => {
+    const files = multi ? Array.from(input.files) : [input.files[0]];
+    onFiles(files.filter(Boolean));
+  });
+
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('over'); });
+  dz.addEventListener('dragleave', ()  => dz.classList.remove('over'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault(); dz.classList.remove('over');
+    const files = Array.from(e.dataTransfer.files);
+    const filtered = multi ? files : [files[0]];
+    onFiles(filtered.filter(Boolean));
+  });
+}
+
+wireDz('enc-dz', 'enc-input', false, files => {
+  encFile = files[0];
+  document.getElementById('enc-chosen').textContent =
+    encFile.name + '  (' + humanSize(encFile.size) + ')';
+  document.getElementById('enc-btn').disabled = false;
+  hideStatus('enc-status');
+});
+
+wireDz('dec-dz', 'dec-input', true, files => {
+  decFiles = files;
+  document.getElementById('dec-chosen').textContent =
+    files.map(f => f.name).join(',  ');
+  document.getElementById('dec-btn').disabled = false;
+  hideStatus('dec-status');
+});
+
+// ── encode ───────────────────────────────────────────────────────────────
+async function doEncode() {
+  if (!encFile) return;
+  const btn    = document.getElementById('enc-btn');
+  const status = document.getElementById('enc-status');
+  btn.disabled = true;
+  setStatus(status, 'busy', 'Encoding ' + encFile.name + '…');
+
+  const fd = new FormData();
+  fd.append('file', encFile);
+
+  try {
+    const resp = await fetch('/encode', { method: 'POST', body: fd });
+    if (!resp.ok) {
+      const j = await resp.json().catch(() => ({ error: 'Server error' }));
+      setStatus(status, 'err', '✗ ' + j.error);
+      btn.disabled = false;
+      return;
+    }
+    const blob = await resp.blob();
+    const name = getFilename(resp, encFile.name + '.avlt.png');
+    triggerDownload(blob, name);
+    setStatus(status, 'ok',
+      '✓ Encoded successfully!<br>' +
+      '<a class="dl" href="' + blobUrl(blob) + '" download="' + name + '">⬇ Download ' + name + '</a>'
+    );
+  } catch (e) {
+    setStatus(status, 'err', '✗ Network error: ' + e.message);
+  }
+  btn.disabled = false;
+}
+
+// ── decode ───────────────────────────────────────────────────────────────
+async function doDecode() {
+  if (!decFiles.length) return;
+  const btn    = document.getElementById('dec-btn');
+  const status = document.getElementById('dec-status');
+  btn.disabled = true;
+  setStatus(status, 'busy', 'Decoding ' + decFiles.length + ' file(s)…');
+
+  const fd = new FormData();
+  for (const f of decFiles) fd.append('files', f);
+
+  try {
+    const resp = await fetch('/decode', { method: 'POST', body: fd });
+    if (!resp.ok) {
+      const j = await resp.json().catch(() => ({ error: 'Server error' }));
+      setStatus(status, 'err', '✗ ' + j.error);
+      btn.disabled = false;
+      return;
+    }
+    const blob = await resp.blob();
+    const name = getFilename(resp, 'decoded_file');
+    triggerDownload(blob, name);
+    setStatus(status, 'ok',
+      '✓ Decoded & verified!<br>' +
+      '<a class="dl" href="' + blobUrl(blob) + '" download="' + name + '">⬇ Download ' + name + '</a>'
+    );
+  } catch (e) {
+    setStatus(status, 'err', '✗ Network error: ' + e.message);
+  }
+  btn.disabled = false;
+}
+
+// ── helpers ───────────────────────────────────────────────────────────────
+const _blobUrls = [];
+function blobUrl(blob) {
+  const u = URL.createObjectURL(blob);
+  _blobUrls.push(u);
+  return u;
+}
+
+function triggerDownload(blob, name) {
+  const a = document.createElement('a');
+  a.href = blobUrl(blob);
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+function getFilename(resp, fallback) {
+  const cd = resp.headers.get('Content-Disposition') || '';
+  const m  = cd.match(/filename\*?=(?:UTF-8''|["']?)([^"';\n]+)/i);
+  return m ? decodeURIComponent(m[1].replace(/['"]/g, '')) : fallback;
+}
+
+function setStatus(el, type, html) {
+  el.className = 'status ' + type;
+  el.innerHTML = type === 'busy'
+    ? '<div class="spin"></div><span>' + html + '</span>'
+    : html;
+}
+
+function hideStatus(id) {
+  const el = document.getElementById(id);
+  el.className = 'status';
+  el.innerHTML = '';
+}
+
+function humanSize(b) {
+  const u = ['B','KB','MB','GB'];
+  let i = 0;
+  while (b >= 1024 && i < 3) { b /= 1024; i++; }
+  return (i > 0 ? b.toFixed(1) : b.toFixed(0)) + ' ' + u[i];
+}
+</script>
+</body>
+</html>
