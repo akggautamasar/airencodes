@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AirVault — Logs</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#08081a;--surface:#111128;--card:#16163a;
+  --border:#2a2a55;--border-hover:#5a5aaa;
+  --accent:#6366f1;--accent2:#22d3ee;
+  --text:#e0e0ff;--muted:#7878aa;
+  --success:#22c55e;--warn:#f59e0b;--error:#ef4444;
+}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;min-height:100vh}
+
+/* ── TOP BAR ── */
+.topbar{
+  background:var(--surface);border-bottom:1px solid var(--border);
+  padding:0 28px;height:56px;display:flex;align-items:center;gap:0;
+  position:sticky;top:0;z-index:10;
+}
+.topbar-brand{
+  font-size:1.2rem;font-weight:800;letter-spacing:-.5px;
+  background:linear-gradient(135deg,#818cf8,#22d3ee);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  display:flex;align-items:center;gap:8px;text-decoration:none;
+}
+.topbar-brand .bi{-webkit-text-fill-color:initial;font-size:1.1rem}
+.topbar-sep{width:1px;height:24px;background:var(--border);margin:0 18px}
+.topbar-title{font-weight:600;font-size:1rem;color:var(--text)}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.btn-back{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:7px 14px;background:var(--card);border:1px solid var(--border);
+  border-radius:8px;color:var(--text);font-size:.85rem;font-weight:600;
+  text-decoration:none;transition:border-color .2s;
+}
+.btn-back:hover{border-color:var(--border-hover)}
+.btn-clear{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:7px 14px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);
+  border-radius:8px;color:var(--error);font-size:.85rem;font-weight:600;
+  cursor:pointer;transition:background .2s;
+}
+.btn-clear:hover{background:rgba(239,68,68,.22)}
+
+/* ── STATS ── */
+.stats-bar{
+  display:flex;gap:16px;padding:24px 28px 0;flex-wrap:wrap;
+}
+.stat{
+  background:var(--card);border:1px solid var(--border);border-radius:14px;
+  padding:16px 22px;min-width:130px;
+}
+.stat-val{font-size:1.8rem;font-weight:800;line-height:1}
+.stat-label{font-size:.78rem;color:var(--muted);margin-top:4px}
+.stat-enc .stat-val{color:#818cf8}
+.stat-dec .stat-val{color:#22d3ee}
+.stat-total .stat-val{color:var(--text)}
+.stat-size .stat-val{color:var(--warn)}
+
+/* ── CONTENT ── */
+.content{max-width:1100px;margin:0 auto;padding:24px 28px 80px}
+
+/* ── STORAGE NOTE ── */
+.storage-note{
+  background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);
+  border-radius:10px;padding:11px 16px;font-size:.82rem;color:var(--warn);
+  margin-bottom:20px;line-height:1.5;
+}
+.storage-note code{
+  background:rgba(255,255,255,.07);padding:1px 6px;border-radius:4px;font-size:.85em;
+}
+
+/* ── EMPTY STATE ── */
+.empty{
+  text-align:center;padding:80px 24px;color:var(--muted);
+}
+.empty-icon{font-size:3.5rem;display:block;margin-bottom:16px}
+.empty h2{font-size:1.2rem;font-weight:600;color:var(--text);margin-bottom:8px}
+.empty p{font-size:.9rem;line-height:1.6}
+
+/* ── ENTRY CARDS ── */
+.entries{display:flex;flex-direction:column;gap:14px}
+.entry{
+  background:var(--card);border:1px solid var(--border);border-radius:16px;
+  overflow:hidden;transition:border-color .2s;
+}
+.entry:hover{border-color:var(--border-hover)}
+
+.entry-head{
+  display:flex;align-items:center;gap:14px;padding:16px 20px;
+  cursor:pointer;user-select:none;
+}
+.entry-icon{
+  width:40px;height:40px;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;
+}
+.icon-enc{background:linear-gradient(135deg,#6366f1,#8b5cf6)}
+.icon-dec{background:linear-gradient(135deg,#06b6d4,#0284c7)}
+
+.entry-meta{flex:1;min-width:0}
+.entry-name{
+  font-weight:700;font-size:.95rem;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.entry-sub{font-size:.78rem;color:var(--muted);margin-top:3px;display:flex;gap:12px;flex-wrap:wrap}
+.tag{
+  display:inline-flex;align-items:center;gap:4px;
+  background:rgba(255,255,255,.06);padding:2px 8px;border-radius:20px;font-size:.72rem;
+}
+.tag-enc{color:#a5b4fc}
+.tag-dec{color:#67e8f9}
+.tag-lock{color:var(--warn)}
+
+.entry-chevron{
+  color:var(--muted);font-size:1rem;transition:transform .2s;flex-shrink:0;
+}
+.entry.open .entry-chevron{transform:rotate(180deg)}
+
+/* ── ENTRY DETAIL ── */
+.entry-body{
+  display:none;border-top:1px solid var(--border);padding:18px 20px;
+}
+.entry.open .entry-body{display:block}
+
+.detail-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;
+  margin-bottom:16px;
+}
+.detail-item{}
+.detail-label{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px}
+.detail-val{font-size:.88rem;font-family:monospace;word-break:break-all}
+
+.dl-section h4{font-size:.78rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px}
+.dl-list{display:flex;flex-wrap:wrap;gap:8px}
+.dl-btn{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:8px 14px;border-radius:8px;font-size:.82rem;font-weight:600;
+  text-decoration:none;transition:filter .15s,transform .15s;
+}
+.dl-orig{background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);color:#a5b4fc}
+.dl-png{background:rgba(6,182,212,.15);border:1px solid rgba(6,182,212,.3);color:#67e8f9}
+.dl-dec{background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.3);color:#86efac}
+.dl-btn:hover{filter:brightness(1.2);transform:translateY(-1px)}
+
+/* ── CONFIRM DIALOG ── */
+.overlay{
+  display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);
+  z-index:100;align-items:center;justify-content:center;
+}
+.overlay.show{display:flex}
+.dialog{
+  background:var(--card);border:1px solid var(--border);border-radius:18px;
+  padding:32px;max-width:400px;width:90%;text-align:center;
+}
+.dialog h3{font-size:1.2rem;font-weight:700;margin-bottom:12px}
+.dialog p{color:var(--muted);font-size:.9rem;line-height:1.6;margin-bottom:24px}
+.dialog-btns{display:flex;gap:10px;justify-content:center}
+.dialog-cancel{
+  padding:10px 22px;background:var(--surface);border:1px solid var(--border);
+  border-radius:9px;color:var(--text);font-size:.9rem;font-weight:600;cursor:pointer;
+}
+.dialog-confirm{
+  padding:10px 22px;background:var(--error);border:none;
+  border-radius:9px;color:#fff;font-size:.9rem;font-weight:600;cursor:pointer;
+  transition:filter .15s;
+}
+.dialog-confirm:hover{filter:brightness(1.1)}
+</style>
+</head>
+<body>
+
+<!-- top bar -->
+<div class="topbar">
+  <a href="/" class="topbar-brand"><span class="bi">🔐</span>AirVault</a>
+  <div class="topbar-sep"></div>
+  <span class="topbar-title">Logs</span>
+  <div class="topbar-right">
+    <a href="/" class="btn-back">← Back to App</a>
+    {% if entries %}
+    <button class="btn-clear" onclick="confirmClear()">🗑 Clear All</button>
+    {% endif %}
+  </div>
+</div>
+
+<!-- stats -->
+{% if entries %}
+<div class="stats-bar">
+  <div class="stat stat-total">
+    <div class="stat-val">{{ stats.total }}</div>
+    <div class="stat-label">Total operations</div>
+  </div>
+  <div class="stat stat-enc">
+    <div class="stat-val">{{ stats.encodes }}</div>
+    <div class="stat-label">Files encoded</div>
+  </div>
+  <div class="stat stat-dec">
+    <div class="stat-val">{{ stats.decodes }}</div>
+    <div class="stat-label">Files decoded</div>
+  </div>
+  <div class="stat stat-size">
+    <div class="stat-val">{{ human(stats.bytes) }}</div>
+    <div class="stat-label">Stored on disk</div>
+  </div>
+</div>
+{% endif %}
+
+<div class="content">
+
+  <!-- storage note -->
+  <div class="storage-note">
+    💾 Files are saved to <code>{{ log_dir }}</code>.
+    On Render free tier this folder is <strong>ephemeral</strong> — set a
+    <code>LOG_DIR</code> environment variable pointing to a
+    <a href="https://render.com/docs/disks" style="color:var(--warn)" target="_blank">Render Disk</a>
+    mount path to make them persist across restarts.
+  </div>
+
+  {% if not entries %}
+  <div class="empty">
+    <span class="empty-icon">📭</span>
+    <h2>No activity yet</h2>
+    <p>Every file you encode or decode will appear here with download links.</p>
+  </div>
+  {% else %}
+  <div class="entries">
+    {% for e in entries %}
+    <div class="entry" id="entry-{{ e.id }}">
+      <div class="entry-head" onclick="toggle('entry-{{ e.id }}')">
+        <div class="entry-icon {% if e.op == 'encode' %}icon-enc{% else %}icon-dec{% endif %}">
+          {% if e.op == 'encode' %}📥{% else %}📤{% endif %}
+        </div>
+        <div class="entry-meta">
+          <div class="entry-name">{{ e.filename }}</div>
+          <div class="entry-sub">
+            <span class="tag {% if e.op == 'encode' %}tag-enc{% else %}tag-dec{% endif %}">
+              {% if e.op == 'encode' %}Encode{% else %}Decode{% endif %}
+            </span>
+            <span>{{ e.ts }}</span>
+            {% if e.op == 'encode' %}
+              <span>{{ human(e.original_size) }} → {{ e.parts }} PNG{% if e.parts > 1 %}s{% endif %}</span>
+              {% if e.encrypted %}
+              <span class="tag tag-lock">🔒 encrypted</span>
+              {% endif %}
+            {% else %}
+              <span>{{ human(e.file_size) }}</span>
+            {% endif %}
+          </div>
+        </div>
+        <div class="entry-chevron">▼</div>
+      </div>
+      <div class="entry-body">
+        <div class="detail-grid">
+          <div class="detail-item">
+            <div class="detail-label">SHA-256</div>
+            <div class="detail-val">{{ e.sha256[:32] }}…</div>
+          </div>
+          {% if e.op == 'encode' %}
+          <div class="detail-item">
+            <div class="detail-label">Original size</div>
+            <div class="detail-val">{{ human(e.original_size) }}</div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-label">PNG size (total)</div>
+            <div class="detail-val">{{ human(e.png_size) }}</div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-label">Parts</div>
+            <div class="detail-val">{{ e.parts }}</div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-label">Encrypted</div>
+            <div class="detail-val">{% if e.encrypted %}Yes (AES-256-GCM){% else %}No{% endif %}</div>
+          </div>
+          {% else %}
+          <div class="detail-item">
+            <div class="detail-label">Decoded size</div>
+            <div class="detail-val">{{ human(e.file_size) }}</div>
+          </div>
+          {% endif %}
+        </div>
+
+        <div class="dl-section">
+          <h4>Download saved files</h4>
+          <div class="dl-list">
+            {% if e.op == 'encode' %}
+              <a class="dl-btn dl-orig"
+                 href="/logs/download/{{ e.id }}/originals/{{ e.filename }}">
+                📄 {{ e.filename }}
+              </a>
+              {% for png_name in e.encoded_names %}
+              <a class="dl-btn dl-png"
+                 href="/logs/download/{{ e.id }}/encoded/{{ png_name }}">
+                🖼 {{ png_name }}
+              </a>
+              {% endfor %}
+            {% else %}
+              <a class="dl-btn dl-dec"
+                 href="/logs/download/{{ e.id }}/decoded/{{ e.filename }}">
+                📄 {{ e.filename }}
+              </a>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+</div><!-- /content -->
+
+<!-- confirm dialog -->
+<div class="overlay" id="overlay">
+  <div class="dialog">
+    <h3>Clear all logs?</h3>
+    <p>This permanently deletes every saved file (originals, PNGs, decoded files) and the activity log. This cannot be undone.</p>
+    <div class="dialog-btns">
+      <button class="dialog-cancel" onclick="hideDialog()">Cancel</button>
+      <button class="dialog-confirm" onclick="doClear()">Delete everything</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// pass server-side values to JS
+const LOG_DIR = {{ log_dir | tojson }};
+
+function toggle(id) {
+  document.getElementById(id).classList.toggle('open');
+}
+
+function confirmClear() {
+  document.getElementById('overlay').classList.add('show');
+}
+function hideDialog() {
+  document.getElementById('overlay').classList.remove('show');
+}
+
+async function doClear() {
+  hideDialog();
+  const resp = await fetch('/logs/clear', { method: 'POST' });
+  if (resp.ok) {
+    window.location.reload();
+  } else {
+    alert('Failed to clear logs.');
+  }
+}
+
+// close dialog on backdrop click
+document.getElementById('overlay').addEventListener('click', function(e) {
+  if (e.target === this) hideDialog();
+});
+</script>
+</body>
+</html>
