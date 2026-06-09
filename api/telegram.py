@@ -58,28 +58,57 @@ def _make_client():
 
 async def _warm_and_resolve(app):
     """
-    Return a resolved peer we can send to.
+    Resolve the configured channel peer.
 
-    With a fresh session (or after a restart) Pyrogram has no access_hash
-    for numeric channel IDs. We call get_dialogs() which fetches the bot's
-    recent chats from Telegram and caches their access_hashes — after that
-    get_chat() works with the numeric ID too.
+    • @username → always works via contacts.ResolveUsername
+    • numeric ID → check peer cache first; if missing, invoke channels.GetChannels
+      with access_hash=0 (Telegram accepts this for channels the bot is an admin of),
+      manually store the real access_hash, then return the peer.
+
+    get_dialogs() is a user-only method and raises BOT_METHOD_INVALID for bots.
     """
+    from types import SimpleNamespace
+
     chat_id = _chat()
-    # Fast path: username format (@chan) always resolves without session data
+
+    # Username always resolves without peer cache
+    if isinstance(chat_id, str):
+        return await app.get_chat(chat_id)
+
+    # Fast path: peer already cached (persistent session or second call this session)
     try:
         return await app.get_chat(chat_id)
     except Exception:
         pass
 
-    # Slow path: fetch dialogs to populate the peer cache, then retry
-    try:
-        async for _ in app.get_dialogs(limit=200):
-            pass
-    except Exception as exc:
-        print(f"[telegram] get_dialogs error: {exc}", flush=True)
+    # Numeric channel ID: use channels.GetChannels with access_hash=0.
+    # Telegram accepts this for channels the bot is already a member/admin of.
+    # Pyrogram's invoke() does NOT auto-cache raw responses, so we call
+    # storage.update_peers() manually with the real access_hash from the response.
+    from pyrogram import raw as raw_api
 
-    return await app.get_chat(chat_id)   # raises if still unresolvable
+    channel_id_str = str(abs(chat_id))
+    mtproto_id = int(channel_id_str[3:]) if channel_id_str.startswith("100") else abs(chat_id)
+
+    result = await app.invoke(
+        raw_api.functions.channels.GetChannels(
+            id=[raw_api.types.InputChannel(channel_id=mtproto_id, access_hash=0)]
+        )
+    )
+
+    if not result.chats:
+        raise RuntimeError(
+            f"Channel {chat_id} not found — make sure the bot is a channel admin."
+        )
+
+    ch = result.chats[0]
+    ch_type = "channel" if getattr(ch, "broadcast", False) else "supergroup"
+
+    await app.storage.update_peers([
+        (ch.id, ch.access_hash, ch_type, getattr(ch, "username", None), None)
+    ])
+
+    return SimpleNamespace(id=ch.id)
 
 
 async def _send_doc(app, peer_id, data: bytes, filename: str, caption: str = ""):
