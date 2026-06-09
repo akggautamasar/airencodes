@@ -23,12 +23,7 @@
 body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;min-height:100vh;overflow-x:hidden}
 
 /* ── HEADER ── */
-header{
-  padding:56px 24px 36px;
-  text-align:center;
-  position:relative;
-  overflow:hidden;
-}
+header{padding:56px 24px 36px;text-align:center;position:relative;overflow:hidden}
 header::before{
   content:'';position:absolute;top:-60px;left:50%;transform:translateX(-50%);
   width:700px;height:400px;
@@ -58,10 +53,7 @@ main{max-width:1000px;margin:0 auto;padding:0 20px 80px}
 .card:hover{border-color:var(--border-hover)}
 
 .card-header{display:flex;align-items:center;gap:12px;margin-bottom:8px}
-.chip{
-  width:42px;height:42px;border-radius:12px;display:flex;align-items:center;
-  justify-content:center;font-size:1.3rem;flex-shrink:0;
-}
+.chip{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0}
 .chip-enc{background:linear-gradient(135deg,#6366f1,#8b5cf6)}
 .chip-dec{background:linear-gradient(135deg,#06b6d4,#0284c7)}
 .card-title{font-size:1.45rem;font-weight:700}
@@ -79,6 +71,28 @@ main{max-width:1000px;margin:0 auto;padding:0 20px 80px}
 .dz-text{color:var(--muted);font-size:.88rem}
 .dz-text b{color:var(--text)}
 .dz-chosen{margin-top:10px;font-size:.82rem;color:var(--accent2);word-break:break-all;line-height:1.4}
+
+/* ── PASSWORD ── */
+.pw-group{margin-top:16px}
+.pw-label{font-size:.78rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;display:flex;align-items:center;gap:6px}
+.pw-label span{background:rgba(99,102,241,.18);color:var(--accent2);font-size:.7rem;padding:1px 7px;border-radius:20px;text-transform:none;letter-spacing:0;font-weight:500}
+.pw-wrap{position:relative;display:flex}
+.pw-input{
+  width:100%;padding:10px 42px 10px 14px;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:10px;color:var(--text);font-size:.9rem;
+  outline:none;transition:border-color .2s;
+}
+.pw-input:focus{border-color:var(--accent)}
+.pw-input::placeholder{color:var(--muted)}
+.pw-eye{
+  position:absolute;right:0;top:0;bottom:0;width:38px;
+  background:none;border:none;cursor:pointer;
+  color:var(--muted);font-size:1rem;display:flex;align-items:center;justify-content:center;
+  transition:color .15s;
+}
+.pw-eye:hover{color:var(--text)}
+.pw-hint{font-size:.76rem;color:var(--muted);margin-top:5px;padding-left:2px}
 
 /* ── BUTTON ── */
 .btn{
@@ -99,14 +113,10 @@ main{max-width:1000px;margin:0 auto;padding:0 20px 80px}
   background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.3);
   color:var(--accent2);display:flex;align-items:center;gap:10px;padding:12px 14px;
 }
-.status.ok{
-  background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);
-  color:var(--success);display:block;padding:12px 14px;
-}
-.status.err{
-  background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);
-  color:var(--error);display:block;padding:12px 14px;
-}
+.status.ok{background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);color:var(--success);display:block;padding:12px 14px}
+.status.err{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:var(--error);display:block;padding:12px 14px}
+.status.warn{background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);color:var(--warn);display:block;padding:12px 14px}
+
 .spin{
   width:15px;height:15px;border:2px solid rgba(99,102,241,.3);
   border-top-color:var(--accent2);border-radius:50%;
@@ -123,6 +133,14 @@ main{max-width:1000px;margin:0 auto;padding:0 20px 80px}
 }
 .dl:hover{filter:brightness(1.1);transform:translateY(-1px)}
 
+/* ── ENCRYPTED BADGE ── */
+.enc-badge{
+  display:inline-flex;align-items:center;gap:5px;
+  background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.35);
+  color:#a5b4fc;font-size:.78rem;font-weight:600;
+  padding:4px 10px;border-radius:20px;margin-top:8px;
+}
+
 /* ── NOTE BANNER ── */
 .note{
   background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);
@@ -133,32 +151,28 @@ main{max-width:1000px;margin:0 auto;padding:0 20px 80px}
 /* ── HOW IT WORKS ── */
 .how{margin-top:64px;text-align:center}
 .how h2{font-size:1.6rem;font-weight:800;margin-bottom:30px;color:var(--text)}
-.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
-@media(max-width:600px){.steps{grid-template-columns:1fr}}
-.step{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px}
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
+@media(max-width:700px){.steps{grid-template-columns:1fr 1fr}}
+@media(max-width:400px){.steps{grid-template-columns:1fr}}
+.step{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:22px}
 .step-n{
   width:34px;height:34px;border-radius:50%;
   background:linear-gradient(135deg,var(--accent),var(--accent2));
   display:flex;align-items:center;justify-content:center;
   font-weight:800;font-size:.85rem;margin:0 auto 12px;
 }
-.step h3{font-size:.95rem;font-weight:700;margin-bottom:8px}
-.step p{color:var(--muted);font-size:.82rem;line-height:1.55}
+.step h3{font-size:.92rem;font-weight:700;margin-bottom:7px}
+.step p{color:var(--muted);font-size:.8rem;line-height:1.55}
 
 /* ── FOOTER ── */
-footer{
-  text-align:center;padding:28px;color:var(--muted);font-size:.8rem;
-  border-top:1px solid var(--border);margin-top:40px;
-}
-footer a{color:var(--muted);text-decoration:none}
-footer a:hover{color:var(--text)}
+footer{text-align:center;padding:28px;color:var(--muted);font-size:.8rem;border-top:1px solid var(--border);margin-top:40px}
 </style>
 </head>
 <body>
 
 <header>
   <div class="brand"><span class="brand-icon">🔐</span>AirVault</div>
-  <p class="tagline">Hide any file inside a lossless PNG — SHA-256 verified, corruption-proof.</p>
+  <p class="tagline">Hide any file inside a lossless PNG — SHA-256 verified, corruption-proof, optional AES-256 encryption.</p>
 </header>
 
 <main>
@@ -171,8 +185,8 @@ footer a:hover{color:var(--text)}
         <div class="card-title">Encode</div>
       </div>
       <p class="card-desc">
-        Upload any file (PDF, ZIP, video…). It will be hidden inside one or more
-        lossless PNG images. Large files are split and bundled as a ZIP.
+        Upload any file (PDF, ZIP, video…). It will be hidden inside a lossless PNG.
+        Add a password to encrypt the data with AES-256-GCM.
       </p>
 
       <div class="dz" id="enc-dz">
@@ -182,6 +196,20 @@ footer a:hover{color:var(--text)}
         <div class="dz-chosen" id="enc-chosen"></div>
       </div>
 
+      <!-- password -->
+      <div class="pw-group">
+        <div class="pw-label">Password <span>optional</span></div>
+        <div class="pw-wrap">
+          <input type="password" id="enc-pw" class="pw-input"
+                 placeholder="Leave empty for no encryption"
+                 autocomplete="new-password">
+          <button type="button" class="pw-eye" onclick="togglePw('enc-pw',this)" title="Show/hide">
+            <svg id="enc-pw-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+        <div class="pw-hint">If set, the same password will be needed to decode.</div>
+      </div>
+
       <button class="btn btn-enc" id="enc-btn" disabled onclick="doEncode()">
         🔒 Encode to PNG
       </button>
@@ -189,8 +217,8 @@ footer a:hover{color:var(--text)}
       <div class="status" id="enc-status"></div>
 
       <div class="note">
-        ℹ️ Any file type supported. Files over ~33 MB are split into multiple PNG parts
-        and downloaded together as a ZIP. All parts are required to decode.
+        ℹ️ Files over ~33 MB are split into multiple PNG parts delivered as a ZIP.
+        All parts are needed to decode.
       </div>
     </div>
 
@@ -201,8 +229,8 @@ footer a:hover{color:var(--text)}
         <div class="card-title">Decode</div>
       </div>
       <p class="card-desc">
-        Upload the AirVault PNG(s). If the original was split into multiple parts,
-        upload all of them at once. Every byte is SHA-256 verified before saving.
+        Upload the AirVault PNG(s). If the file was encrypted, enter the password
+        that was used when encoding. Every byte is SHA-256 verified before saving.
       </p>
 
       <div class="dz" id="dec-dz">
@@ -212,6 +240,20 @@ footer a:hover{color:var(--text)}
         <div class="dz-chosen" id="dec-chosen"></div>
       </div>
 
+      <!-- password -->
+      <div class="pw-group">
+        <div class="pw-label">Password <span>if encrypted</span></div>
+        <div class="pw-wrap">
+          <input type="password" id="dec-pw" class="pw-input"
+                 placeholder="Leave empty if not encrypted"
+                 autocomplete="current-password">
+          <button type="button" class="pw-eye" onclick="togglePw('dec-pw',this)" title="Show/hide">
+            <svg id="dec-pw-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+        <div class="pw-hint">Required only if the file was encoded with a password.</div>
+      </div>
+
       <button class="btn btn-dec" id="dec-btn" disabled onclick="doDecode()">
         🔓 Decode to Original File
       </button>
@@ -219,8 +261,8 @@ footer a:hover{color:var(--text)}
       <div class="status" id="dec-status"></div>
 
       <div class="note">
-        ℹ️ Upload all PNG parts together if the file was split. Decoding is aborted if
-        any part is missing or the checksum doesn't match.
+        ℹ️ Upload all parts at once for multi-part files. Decoding is aborted if
+        any part is missing, corrupted, or the password is wrong.
       </div>
     </div>
 
@@ -233,48 +275,64 @@ footer a:hover{color:var(--text)}
       <div class="step">
         <div class="step-n">1</div>
         <h3>Lossless PNG only</h3>
-        <p>Data is packed directly into RGB pixel channels. PNG never alters pixels, so data is never altered — unlike JPEG.</p>
+        <p>Data is packed into raw RGB pixel channels. PNG never alters pixels, so your data is never altered — unlike JPEG.</p>
       </div>
       <div class="step">
         <div class="step-n">2</div>
-        <h3>SHA-256 verified</h3>
-        <p>Every chunk and the complete file gets a SHA-256 hash stored in the header. Decode refuses to output anything that doesn't match.</p>
+        <h3>AES-256-GCM encryption</h3>
+        <p>Optional password protection. Key is derived with PBKDF2-SHA256 (260k rounds). Wrong password → decryption fails, nothing is saved.</p>
       </div>
       <div class="step">
         <div class="step-n">3</div>
+        <h3>SHA-256 verified</h3>
+        <p>Every chunk and the full file has a SHA-256 hash embedded. Decode refuses to output anything that doesn't match exactly.</p>
+      </div>
+      <div class="step">
+        <div class="step-n">4</div>
         <h3>Self-describing</h3>
-        <p>The original filename, part index, and both checksums are embedded in every PNG. Works even if the image is renamed or moved.</p>
+        <p>Original filename, part index, and checksums live inside every PNG. Works even if the image is renamed or moved.</p>
       </div>
     </div>
   </div>
 </main>
 
 <footer>
-  AirVault &nbsp;·&nbsp; corruption-proof file storage in PNG images
+  AirVault &nbsp;·&nbsp; corruption-proof, optionally encrypted file storage in PNG images
 </footer>
 
 <script>
 // ── state ────────────────────────────────────────────────────────────────
-let encFile = null;
+let encFile  = null;
 let decFiles = [];
+
+// ── password toggle ──────────────────────────────────────────────────────
+function togglePw(inputId, btn) {
+  const inp = document.getElementById(inputId);
+  const svg = btn.querySelector('svg');
+  if (inp.type === 'password') {
+    inp.type = 'text';
+    // crossed-out eye
+    svg.innerHTML = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>';
+  } else {
+    inp.type = 'password';
+    svg.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
+  }
+}
 
 // ── drop-zone wiring ─────────────────────────────────────────────────────
 function wireDz(dzId, inputId, multi, onFiles) {
   const dz    = document.getElementById(dzId);
   const input = document.getElementById(inputId);
-
   input.addEventListener('change', () => {
     const files = multi ? Array.from(input.files) : [input.files[0]];
     onFiles(files.filter(Boolean));
   });
-
-  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('over'); });
+  dz.addEventListener('dragover',  e => { e.preventDefault(); dz.classList.add('over'); });
   dz.addEventListener('dragleave', ()  => dz.classList.remove('over'));
   dz.addEventListener('drop', e => {
     e.preventDefault(); dz.classList.remove('over');
     const files = Array.from(e.dataTransfer.files);
-    const filtered = multi ? files : [files[0]];
-    onFiles(filtered.filter(Boolean));
+    onFiles((multi ? files : [files[0]]).filter(Boolean));
   });
 }
 
@@ -299,11 +357,13 @@ async function doEncode() {
   if (!encFile) return;
   const btn    = document.getElementById('enc-btn');
   const status = document.getElementById('enc-status');
+  const pw     = document.getElementById('enc-pw').value;
   btn.disabled = true;
-  setStatus(status, 'busy', 'Encoding ' + encFile.name + '…');
+  setStatus(status, 'busy', 'Encoding ' + encFile.name + (pw ? ' (encrypting…)' : '…'));
 
   const fd = new FormData();
   fd.append('file', encFile);
+  if (pw) fd.append('password', pw);
 
   try {
     const resp = await fetch('/encode', { method: 'POST', body: fd });
@@ -316,10 +376,11 @@ async function doEncode() {
     const blob = await resp.blob();
     const name = getFilename(resp, encFile.name + '.avlt.png');
     triggerDownload(blob, name);
-    setStatus(status, 'ok',
-      '✓ Encoded successfully!<br>' +
-      '<a class="dl" href="' + blobUrl(blob) + '" download="' + name + '">⬇ Download ' + name + '</a>'
-    );
+
+    let html = '✓ Encoded successfully!';
+    if (pw) html += '<br><span class="enc-badge">🔒 AES-256 encrypted — keep your password safe</span>';
+    html += '<br><a class="dl" href="' + blobUrl(blob) + '" download="' + esc(name) + '">⬇ Download ' + esc(name) + '</a>';
+    setStatus(status, 'ok', html);
   } catch (e) {
     setStatus(status, 'err', '✗ Network error: ' + e.message);
   }
@@ -331,17 +392,24 @@ async function doDecode() {
   if (!decFiles.length) return;
   const btn    = document.getElementById('dec-btn');
   const status = document.getElementById('dec-status');
+  const pw     = document.getElementById('dec-pw').value;
   btn.disabled = true;
   setStatus(status, 'busy', 'Decoding ' + decFiles.length + ' file(s)…');
 
   const fd = new FormData();
   for (const f of decFiles) fd.append('files', f);
+  if (pw) fd.append('password', pw);
 
   try {
     const resp = await fetch('/decode', { method: 'POST', body: fd });
     if (!resp.ok) {
       const j = await resp.json().catch(() => ({ error: 'Server error' }));
-      setStatus(status, 'err', '✗ ' + j.error);
+      if (j.password_required && !pw) {
+        setStatus(status, 'warn',
+          '🔒 This file is password-protected. Enter the password above and try again.');
+      } else {
+        setStatus(status, 'err', '✗ ' + j.error);
+      }
       btn.disabled = false;
       return;
     }
@@ -350,7 +418,7 @@ async function doDecode() {
     triggerDownload(blob, name);
     setStatus(status, 'ok',
       '✓ Decoded & verified!<br>' +
-      '<a class="dl" href="' + blobUrl(blob) + '" download="' + name + '">⬇ Download ' + name + '</a>'
+      '<a class="dl" href="' + blobUrl(blob) + '" download="' + esc(name) + '">⬇ Download ' + esc(name) + '</a>'
     );
   } catch (e) {
     setStatus(status, 'err', '✗ Network error: ' + e.message);
@@ -359,20 +427,13 @@ async function doDecode() {
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────
-const _blobUrls = [];
-function blobUrl(blob) {
-  const u = URL.createObjectURL(blob);
-  _blobUrls.push(u);
-  return u;
-}
+const _urls = [];
+function blobUrl(blob) { const u = URL.createObjectURL(blob); _urls.push(u); return u; }
 
 function triggerDownload(blob, name) {
   const a = document.createElement('a');
-  a.href = blobUrl(blob);
-  a.download = name;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
+  a.href = blobUrl(blob); a.download = name;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
 }
 
 function getFilename(resp, fallback) {
@@ -390,16 +451,16 @@ function setStatus(el, type, html) {
 
 function hideStatus(id) {
   const el = document.getElementById(id);
-  el.className = 'status';
-  el.innerHTML = '';
+  el.className = 'status'; el.innerHTML = '';
 }
 
 function humanSize(b) {
-  const u = ['B','KB','MB','GB'];
-  let i = 0;
+  const u = ['B','KB','MB','GB']; let i = 0;
   while (b >= 1024 && i < 3) { b /= 1024; i++; }
   return (i > 0 ? b.toFixed(1) : b.toFixed(0)) + ' ' + u[i];
 }
+
+function esc(s) { return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 </script>
 </body>
 </html>

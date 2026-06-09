@@ -26,14 +26,15 @@ def encode_route():
     if not f or not f.filename:
         return jsonify({"error": "No file uploaded"}), 400
 
-    data = f.read()
+    data     = f.read()
     filename = os.path.basename(f.filename)
+    password = request.form.get("password") or None   # None when field is empty
 
     if len(data) == 0:
         return jsonify({"error": "Uploaded file is empty"}), 400
 
     try:
-        parts = av.encode(data, filename)
+        parts = av.encode(data, filename, password=password)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -62,15 +63,20 @@ def encode_route():
 
 @app.route("/decode", methods=["POST"])
 def decode_route():
-    files = request.files.getlist("files")
+    files    = request.files.getlist("files")
+    password = request.form.get("password") or None
     png_list = [f.read() for f in files if f.filename]
+
     if not png_list:
         return jsonify({"error": "No PNG files uploaded"}), 400
 
     try:
-        filename, file_bytes = av.decode_from_pngs(png_list)
+        filename, file_bytes = av.decode_from_pngs(png_list, password=password)
     except ValueError as e:
-        return jsonify({"error": str(e)}), 400
+        msg = str(e)
+        # tell the client whether it was specifically a password issue
+        pw_issue = "password" in msg.lower() or "wrong password" in msg.lower()
+        return jsonify({"error": msg, "password_required": pw_issue}), 400
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -87,15 +93,15 @@ def decode_route():
 def _guess_mime(filename: str) -> str:
     ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
     return {
-        "pdf": "application/pdf",
-        "zip": "application/zip",
-        "png": "image/png",
-        "jpg": "image/jpeg",
+        "pdf":  "application/pdf",
+        "zip":  "application/zip",
+        "png":  "image/png",
+        "jpg":  "image/jpeg",
         "jpeg": "image/jpeg",
-        "gif": "image/gif",
-        "mp4": "video/mp4",
-        "mp3": "audio/mpeg",
-        "txt": "text/plain",
+        "gif":  "image/gif",
+        "mp4":  "video/mp4",
+        "mp3":  "audio/mpeg",
+        "txt":  "text/plain",
         "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     }.get(ext, "application/octet-stream")
