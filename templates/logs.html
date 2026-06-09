@@ -74,6 +74,23 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
   background:rgba(255,255,255,.07);padding:1px 6px;border-radius:4px;font-size:.85em;
 }
 
+/* ── TELEGRAM STATUS ── */
+.tg-note{
+  background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.25);
+  border-radius:10px;padding:11px 16px;font-size:.82rem;color:var(--success);
+  margin-bottom:16px;
+}
+.tg-setup{
+  background:rgba(99,102,241,.07);border:1px solid rgba(99,102,241,.22);
+  border-radius:10px;padding:16px 18px;font-size:.83rem;color:var(--muted);
+  margin-bottom:16px;line-height:1.7;
+}
+.tg-setup-title{font-weight:700;color:var(--text);margin-bottom:8px;font-size:.9rem}
+.tg-setup a{color:var(--accent2);text-decoration:none}
+.tg-setup a:hover{text-decoration:underline}
+.tg-setup ol{padding-left:18px;margin-top:6px}
+.tg-setup code{background:rgba(255,255,255,.07);padding:1px 6px;border-radius:4px;font-size:.85em}
+
 /* ── EMPTY STATE ── */
 .empty{
   text-align:center;padding:80px 24px;color:var(--muted);
@@ -212,12 +229,29 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 
   <!-- storage note -->
   <div class="storage-note">
-    💾 Files are saved to <code>{{ log_dir }}</code>.
+    💾 Local files are saved to <code>{{ log_dir }}</code>.
     On Render free tier this folder is <strong>ephemeral</strong> — set a
     <code>LOG_DIR</code> environment variable pointing to a
     <a href="https://render.com/docs/disks" style="color:var(--warn)" target="_blank">Render Disk</a>
-    mount path to make them persist across restarts.
+    mount path to keep files across restarts.
   </div>
+
+  {% if tg_configured %}
+  <div class="tg-note">
+    🤖 <strong>Telegram channel active</strong> — every encoded and decoded file is automatically forwarded to your channel.
+  </div>
+  {% else %}
+  <div class="tg-setup">
+    <div class="tg-setup-title">🤖 Connect a Telegram channel</div>
+    <p>Set these two environment variables on Render to auto-forward every file:</p>
+    <ol>
+      <li>Message <a href="https://t.me/BotFather" target="_blank">@BotFather</a> → <code>/newbot</code> → copy the token</li>
+      <li>Add the bot as an <strong>admin</strong> to your channel</li>
+      <li>Set <code>TELEGRAM_BOT_TOKEN</code> = <em>your token</em></li>
+      <li>Set <code>TELEGRAM_CHANNEL_ID</code> = <em>@yourchannel</em> or <em>-100xxxxxxxxxx</em></li>
+    </ol>
+  </div>
+  {% endif %}
 
   {% if not entries %}
   <div class="empty">

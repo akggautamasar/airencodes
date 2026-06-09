@@ -8,6 +8,7 @@ from flask import Flask, jsonify, render_template, request, send_file
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import airvault_core as av
 import log_store
+import telegram as tg
 
 TEMPLATES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "templates")
 app = Flask(__name__, template_folder=TEMPLATES_DIR)
@@ -23,9 +24,14 @@ def _human_size(b: int) -> str:
     return f"{b:.1f} PB"
 
 
-# make human() available in every Jinja2 template
-app.jinja_env.globals["human"]   = _human_size
-app.jinja_env.globals["log_dir"] = os.environ.get("LOG_DIR", "/tmp/airvault_logs")
+# inject helpers + dynamic flags into every template
+@app.context_processor
+def _ctx():
+    return {
+        "human":        _human_size,
+        "log_dir":      os.environ.get("LOG_DIR", "/tmp/airvault_logs"),
+        "tg_configured": tg.configured(),
+    }
 
 
 # ── main app ─────────────────────────────────────────────────────────────────
@@ -53,11 +59,15 @@ def encode_route():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-    # save to log
+    encrypted = bool(password)
+
     try:
-        log_store.log_encode(filename, data, parts, encrypted=bool(password))
+        log_store.log_encode(filename, data, parts, encrypted=encrypted)
     except Exception:
-        pass  # logging failure must never break the encode response
+        pass
+
+    # fire-and-forget to Telegram (background thread)
+    tg.send_encode(filename, data, parts, encrypted=encrypted)
 
     if len(parts) == 1:
         png_name, png_bytes = parts[0]
@@ -104,6 +114,8 @@ def decode_route():
     except Exception:
         pass
 
+    tg.send_decode(filename, file_bytes)
+
     return send_file(
         io.BytesIO(file_bytes),
         mimetype=_guess_mime(filename),
@@ -125,12 +137,13 @@ def logs_page():
 def logs_download(entry_id, subdir, filename):
     if subdir not in ("originals", "encoded", "decoded"):
         return "Not found", 404
-    filename = os.path.basename(filename)   # prevent path traversal
+    filename = os.path.basename(filename)
     p = log_store.get_file(entry_id, subdir, filename)
     if p is None:
-        return "File not found (server may have restarted — set LOG_DIR to a persistent path)", 404
-    mime = _guess_mime(filename)
-    return send_file(str(p), mimetype=mime, as_attachment=True, download_name=filename)
+        return ("File not found — server may have restarted. "
+                "Set LOG_DIR to a persistent path to keep files.", 404)
+    return send_file(str(p), mimetype=_guess_mime(filename),
+                     as_attachment=True, download_name=filename)
 
 
 @app.route("/logs/clear", methods=["POST"])
