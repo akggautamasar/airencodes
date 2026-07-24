@@ -146,6 +146,27 @@ main{max-width:1000px;margin:0 auto;padding:0 20px 80px}
 }
 .dl:hover{filter:brightness(1.1);transform:translateY(-1px)}
 
+/* ── SHARE / LINK BUTTONS ── */
+.share-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:9px}
+.dl-share{
+  display:inline-flex;align-items:center;gap:7px;
+  padding:9px 18px;background:var(--accent);color:#fff;
+  font-weight:700;border:none;border-radius:8px;text-decoration:none;
+  font-size:.88rem;cursor:pointer;transition:filter .2s,transform .15s;
+}
+.dl-share:hover{filter:brightness(1.12);transform:translateY(-1px)}
+.dl-link{
+  display:inline-flex;align-items:center;gap:7px;
+  padding:9px 18px;background:transparent;color:var(--accent2);
+  font-weight:700;border:1px solid var(--border-hover);border-radius:8px;
+  text-decoration:none;font-size:.88rem;cursor:pointer;transition:background .2s,transform .15s;
+}
+.dl-link:hover{background:rgba(34,211,238,.08);transform:translateY(-1px)}
+.link-box{
+  margin-top:9px;padding:9px 12px;background:var(--surface);border:1px solid var(--border);
+  border-radius:8px;font-size:.78rem;color:var(--muted);word-break:break-all;
+}
+
 /* ── ENCRYPTED BADGE ── */
 .enc-badge{
   display:inline-flex;align-items:center;gap:5px;
@@ -237,7 +258,10 @@ footer{text-align:center;padding:28px;color:var(--muted);font-size:.8rem;border-
 
       <div class="note">
         ℹ️ Files over ~33 MB are split into multiple PNG parts delivered as a ZIP.
-        All parts are needed to decode.
+        All parts are needed to decode.<br>
+        📤 Output is a <code>.avlt</code> file, not <code>.png</code> — on purpose,
+        so WhatsApp/Telegram don't recognise it as a photo and recompress it.
+        Use the Share button below, or send it as a File/Document.
       </div>
     </div>
 
@@ -253,9 +277,9 @@ footer{text-align:center;padding:28px;color:var(--muted);font-size:.8rem;border-
       </p>
 
       <div class="dz" id="dec-dz">
-        <input type="file" id="dec-input" accept="image/png" multiple>
+        <input type="file" id="dec-input" accept=".avlt,.png,.zip,image/png,application/zip,application/octet-stream" multiple>
         <span class="dz-icon">🖼️</span>
-        <div class="dz-text"><b>Click or drag</b> PNG file(s) here</div>
+        <div class="dz-text"><b>Click or drag</b> .avlt / PNG file(s) here</div>
         <div class="dz-chosen" id="dec-chosen"></div>
       </div>
 
@@ -392,14 +416,39 @@ async function doEncode() {
       btn.disabled = false;
       return;
     }
-    const blob = await resp.blob();
-    const name = getFilename(resp, encFile.name + '.avlt.png');
+    const blob     = await resp.blob();
+    const name     = getFilename(resp, encFile.name + '.avlt');
+    const slug     = resp.headers.get('X-Share-Slug');
+    const shareUrl = slug ? (location.origin + '/s/' + slug) : null;
     triggerDownload(blob, name);
 
     let html = '✓ Encoded successfully!';
     if (pw) html += '<br><span class="enc-badge">🔒 AES-256 encrypted — keep your password safe</span>';
-    html += '<br><a class="dl" href="' + blobUrl(blob) + '" download="' + esc(name) + '">⬇ Download ' + esc(name) + '</a>';
+    html += '<div class="share-row">';
+    html += '<a class="dl" href="' + blobUrl(blob) + '" download="' + esc(name) + '">⬇ Download</a>';
+    html += '<button type="button" class="dl-share" id="enc-share-btn">📤 Share now</button>';
+    if (shareUrl) html += '<button type="button" class="dl-link" id="enc-link-btn">🔗 Copy link (7 days)</button>';
+    html += '</div>';
+    if (shareUrl) html += '<div class="link-box" id="enc-link-box" style="display:none"></div>';
     setStatus(status, 'ok', html);
+
+    // Wire the Share button: opens the OS share sheet directly with the
+    // generated .avlt file, so you can pick WhatsApp/Telegram in one tap
+    // instead of saving + manually re-attaching as a document.
+    document.getElementById('enc-share-btn').onclick = () => shareBlob(blob, name);
+
+    if (shareUrl) {
+      document.getElementById('enc-link-btn').onclick = async () => {
+        const box = document.getElementById('enc-link-box');
+        try {
+          await navigator.clipboard.writeText(shareUrl);
+          box.textContent = '✓ Copied: ' + shareUrl;
+        } catch {
+          box.textContent = shareUrl;
+        }
+        box.style.display = 'block';
+      };
+    }
   } catch (e) {
     setStatus(status, 'err', '✗ Network error: ' + e.message);
   }
@@ -448,6 +497,26 @@ async function doDecode() {
 // ── helpers ───────────────────────────────────────────────────────────────
 const _urls = [];
 function blobUrl(blob) { const u = URL.createObjectURL(blob); _urls.push(u); return u; }
+
+// ── native share sheet ──────────────────────────────────────────────────
+// Uses the Web Share API to hand the .avlt file straight to WhatsApp /
+// Telegram / etc. via the OS share sheet — no save-then-reattach needed.
+// The generic filename + octet-stream type make apps treat it as a
+// document rather than a photo, so the bytes reach the other side intact.
+async function shareBlob(blob, name) {
+  try {
+    const file = new File([blob], name, { type: 'application/octet-stream' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: name });
+      return;
+    }
+  } catch (e) {
+    if (e && e.name === 'AbortError') return; // user cancelled the share sheet
+  }
+  alert('Direct share isn\'t supported in this browser. Use the Download ' +
+        'button, then attach the file as a "Document"/"File" (not Photo) ' +
+        'in WhatsApp or Telegram.');
+}
 
 function triggerDownload(blob, name) {
   const a = document.createElement('a');
