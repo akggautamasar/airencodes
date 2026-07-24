@@ -258,8 +258,13 @@ def encode(data: bytes, filename: str,
         header = build_header(mode, filename, i + 1, part_total,
                                stored, file_sha, encrypted)
         blob   = header + stored
-        name   = (f"{filename}.avlt.png" if part_total == 1
-                  else f"{filename}.part{i+1}of{part_total}.avlt.png")
+        # .avlt (NOT .avlt.png) is deliberate: an extension that isn't
+        # recognised as an image stops WhatsApp/Telegram/Gallery apps from
+        # treating it as a "Photo" and silently recompressing it, which
+        # destroys the hidden LSB data. The bytes inside are still a real
+        # PNG — rename back to .png locally any time to preview it.
+        name   = (f"{filename}.avlt" if part_total == 1
+                  else f"{filename}.part{i+1}of{part_total}.avlt")
         png    = (bytes_to_label_png(blob, f"{filename}  ·  {_human(total_len)}")
                   if mode == 1 else bytes_to_noise_png(blob))
         outputs.append((name, png))

@@ -72,25 +72,38 @@ def encode_route():
     tg.send_encode(filename, data, parts, encrypted=encrypted)
 
     if len(parts) == 1:
-        png_name, png_bytes = parts[0]
-        return send_file(
-            io.BytesIO(png_bytes),
-            mimetype="image/png",
-            as_attachment=True,
-            download_name=png_name,
-        )
+        out_name, out_bytes = parts[0]
+        # application/octet-stream (not image/png): keeps the file generic so
+        # sharing it later doesn't get routed through an app's "photo" path.
+        mimetype = "application/octet-stream"
+    else:
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w", zipfile.ZIP_STORED) as zf:
+            for png_name, png_bytes in parts:
+                zf.writestr(png_name, png_bytes)
+        out_bytes = buf.getvalue()
+        out_name  = f"{filename}.airvault.zip"
+        mimetype  = "application/zip"
 
-    buf = io.BytesIO()
-    with zipfile.ZipFile(buf, "w", zipfile.ZIP_STORED) as zf:
-        for png_name, png_bytes in parts:
-            zf.writestr(png_name, png_bytes)
-    buf.seek(0)
-    return send_file(
-        buf,
-        mimetype="application/zip",
+    # Also stash the exact output bytes behind a short-lived share link, so
+    # the user can send a plain-text URL instead of the file itself when
+    # sharing later — a URL can't be recompressed by anything.
+    slug = None
+    try:
+        slug = log_store.create_share(out_name, out_bytes)
+    except Exception:
+        pass
+
+    resp = send_file(
+        io.BytesIO(out_bytes),
+        mimetype=mimetype,
         as_attachment=True,
-        download_name=f"{filename}.airvault.zip",
+        download_name=out_name,
     )
+    if slug:
+        resp.headers["X-Share-Slug"] = slug
+        resp.headers["X-Share-Name"] = out_name
+    return resp
 
 
 @app.route("/decode", methods=["POST"])
@@ -122,6 +135,26 @@ def decode_route():
     return send_file(
         io.BytesIO(file_bytes),
         mimetype=_guess_mime(filename),
+        as_attachment=True,
+        download_name=filename,
+    )
+
+
+# ── share links ─────────────────────────────────────────────────────────────
+
+@app.route("/s/<slug>")
+def share_download(slug):
+    filename, data = log_store.get_share(slug)
+    if data is None:
+        return (
+            "This link has expired or doesn't exist. Share links last 7 days "
+            "(and only survive a server restart if LOG_DIR points to persistent disk).",
+            404,
+        )
+    mimetype = "application/zip" if filename.endswith(".zip") else "application/octet-stream"
+    return send_file(
+        io.BytesIO(data),
+        mimetype=mimetype,
         as_attachment=True,
         download_name=filename,
     )

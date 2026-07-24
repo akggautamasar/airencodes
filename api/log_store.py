@@ -14,9 +14,13 @@ to make files survive server restarts.
 import hashlib
 import json
 import os
+import re
+import secrets
 import shutil
 import time
 from pathlib import Path
+
+SHARE_TTL_SECONDS = 7 * 24 * 3600   # shareable links last 7 days
 
 
 def _root() -> Path:
@@ -138,10 +142,54 @@ def stats() -> dict:
     }
 
 
+# ── shareable links ─────────────────────────────────────────────────────────
+#
+# Lets a user get a short link (instead of the raw image) to paste into any
+# chat app as plain text. Since a URL is just text, no messaging app can
+# recompress it — the recipient downloads the exact original bytes.
+# NOTE: stored on local disk under LOG_DIR. On free hosting tiers with an
+# ephemeral filesystem (e.g. Render's default disk), links stop working if
+# the server restarts — set LOG_DIR to a persistent disk to avoid that.
+
+def create_share(filename: str, data: bytes, ttl_seconds: int = SHARE_TTL_SECONDS) -> str:
+    slug = secrets.token_urlsafe(9)
+    d = _root() / "shares" / slug
+    d.mkdir(parents=True, exist_ok=True)
+    (d / filename).write_bytes(data)
+    meta = {
+        "filename": filename,
+        "created":  time.time(),
+        "expires":  time.time() + ttl_seconds,
+    }
+    (d / "meta.json").write_text(json.dumps(meta), encoding="utf-8")
+    return slug
+
+
+def get_share(slug: str):
+    """Return (filename, bytes) for a valid, non-expired share, else (None, None)."""
+    if not re.fullmatch(r"[A-Za-z0-9_-]{6,40}", slug or ""):
+        return None, None
+    d = _root() / "shares" / slug
+    meta_path = d / "meta.json"
+    if not meta_path.exists():
+        return None, None
+    try:
+        meta = json.loads(meta_path.read_text("utf-8"))
+    except Exception:
+        return None, None
+    if time.time() > meta.get("expires", 0):
+        shutil.rmtree(d, ignore_errors=True)
+        return None, None
+    fp = d / meta["filename"]
+    if not fp.exists():
+        return None, None
+    return meta["filename"], fp.read_bytes()
+
+
 def clear_all() -> None:
     """Delete every saved file and the log."""
     root = _root()
-    for sub in ("originals", "encoded", "decoded"):
+    for sub in ("originals", "encoded", "decoded", "shares"):
         d = root / sub
         if d.exists():
             shutil.rmtree(d)
