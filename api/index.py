@@ -12,7 +12,7 @@ import telegram as tg
 
 TEMPLATES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "templates")
 app = Flask(__name__, template_folder=TEMPLATES_DIR)
-app.config["MAX_CONTENT_LENGTH"] = 500 * 1024 * 1024  # 500 MB hard cap
+app.config["MAX_CONTENT_LENGTH"] = 500 * 1024 * 1024
 
 
 def _human_size(b: int) -> str:
@@ -27,8 +27,8 @@ def _human_size(b: int) -> str:
 @app.context_processor
 def _ctx():
     return {
-        "human":        _human_size,
-        "log_dir":      os.environ.get("LOG_DIR", "/tmp/airvault_logs"),
+        "human": _human_size,
+        "log_dir": os.environ.get("LOG_DIR", "/tmp/airvault_logs"),
         "tg_configured": tg.configured(),
     }
 
@@ -44,10 +44,9 @@ def encode_route():
     if not f or not f.filename:
         return jsonify({"error": "No file uploaded"}), 400
 
-    data     = f.read()
+    data = f.read()
     filename = os.path.basename(f.filename)
     password = request.form.get("password") or None
-
     if len(data) == 0:
         return jsonify({"error": "Uploaded file is empty"}), 400
 
@@ -57,14 +56,12 @@ def encode_route():
         return jsonify({"error": str(e)}), 500
 
     encrypted = bool(password)
-
     try:
         log_store.log_encode(filename, data, parts,
                              encrypted=encrypted,
                              save_files=not tg.configured())
     except Exception:
         pass
-
     tg.send_encode(filename, data, parts, encrypted=encrypted)
 
     if len(parts) == 1:
@@ -76,8 +73,8 @@ def encode_route():
             for png_name, png_bytes in parts:
                 zf.writestr(png_name, png_bytes)
         out_bytes = buf.getvalue()
-        out_name  = f"{filename}.airvault.zip"
-        mimetype  = "application/zip"
+        out_name = f"{filename}.airvault.zip"
+        mimetype = "application/zip"
 
     slug = None
     try:
@@ -85,12 +82,8 @@ def encode_route():
     except Exception:
         pass
 
-    resp = send_file(
-        io.BytesIO(out_bytes),
-        mimetype=mimetype,
-        as_attachment=True,
-        download_name=out_name,
-    )
+    resp = send_file(io.BytesIO(out_bytes), mimetype=mimetype,
+                     as_attachment=True, download_name=out_name)
     if slug:
         resp.headers["X-Share-Slug"] = slug
         resp.headers["X-Share-Name"] = out_name
@@ -98,7 +91,7 @@ def encode_route():
 
 
 def _decode_shared_bytes(data: bytes, filename: str, password: str = None):
-    """Decode the exact bytes stored behind a share link."""
+    """Decode the exact encoded bytes stored behind a share link."""
     if filename.lower().endswith(".zip") or data[:4] == b"PK\x03\x04":
         try:
             with zipfile.ZipFile(io.BytesIO(data), "r") as zf:
@@ -116,19 +109,17 @@ def _decode_shared_bytes(data: bytes, filename: str, password: str = None):
 
 @app.route("/decode", methods=["POST"])
 def decode_route():
-    files    = request.files.getlist("files")
+    files = request.files.getlist("files")
     password = request.form.get("password") or None
     png_list = [f.read() for f in files if f.filename]
-
     if not png_list:
         return jsonify({"error": "No PNG files uploaded"}), 400
 
     try:
         filename, file_bytes = av.decode_from_pngs(png_list, password=password)
     except ValueError as e:
-        msg      = str(e)
-        pw_issue = "password" in msg.lower()
-        return jsonify({"error": msg, "password_required": pw_issue}), 400
+        msg = str(e)
+        return jsonify({"error": msg, "password_required": "password" in msg.lower()}), 400
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -137,15 +128,9 @@ def decode_route():
                              save_files=not tg.configured())
     except Exception:
         pass
-
     tg.send_decode(filename, file_bytes)
-
-    return send_file(
-        io.BytesIO(file_bytes),
-        mimetype=_guess_mime(filename),
-        as_attachment=True,
-        download_name=filename,
-    )
+    return send_file(io.BytesIO(file_bytes), mimetype=_guess_mime(filename),
+                     as_attachment=True, download_name=filename)
 
 
 # ── share links ─────────────────────────────────────────────────────────────
@@ -154,22 +139,15 @@ def decode_route():
 def share_download(slug):
     filename, data = log_store.get_share(slug)
     if data is None:
-        return (
-            "This link has expired or doesn't exist. Share links last 7 days "
-            "(and only survive a server restart if LOG_DIR points to persistent disk).",
-            404,
-        )
+        return ("This link has expired or doesn't exist. Share links last 7 days "
+                "(and only survive a server restart if LOG_DIR points to persistent disk).", 404)
 
-    # A normal request remains a direct file download for compatibility.
-    # Add ?decode=1 to open the share-link decoder UI.
-    if request.args.get("decode") != "1":
+    # ?download=1 preserves the old behaviour for clients that need the raw
+    # encoded .avlt/.zip. The normal copied share link opens the decoder UI.
+    if request.args.get("download") == "1":
         mimetype = "application/zip" if filename.endswith(".zip") else "application/octet-stream"
-        return send_file(
-            io.BytesIO(data),
-            mimetype=mimetype,
-            as_attachment=True,
-            download_name=filename,
-        )
+        return send_file(io.BytesIO(data), mimetype=mimetype,
+                         as_attachment=True, download_name=filename)
 
     return f'''<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
@@ -185,8 +163,8 @@ button{{width:100%;margin-top:14px;padding:14px;border:0;border-radius:11px;back
 a{{color:#22d3ee}}
 </style></head><body><main class="card">
 <h1>🔓 Decode shared AirVault file</h1>
-<p>This share link contains the original AirVault encoded file. Decode it here and download the verified original.</p>
-<div class="file">📦 <strong>{_html_escape(filename)}</strong><br><small>Share links expire after 7 days.</small></div>
+<p>This link contains the AirVault encoded data. Enter the password if required, then decode and download the verified original file.</p>
+<div class="file">📦 <strong>{_html_escape(filename)}</strong><br><small>Share link expires after 7 days.</small></div>
 <form id="f"><input id="pw" type="password" placeholder="Password (only if encrypted)" autocomplete="current-password"><button id="b">🔓 Decode & download original</button></form>
 <div id="m" class="msg"></div>
 <p><a href="/">← Back to AirVault</a></p>
@@ -220,29 +198,19 @@ def decode_share(slug):
     except Exception:
         pass
     tg.send_decode(original_name, file_bytes)
-
-    return send_file(
-        io.BytesIO(file_bytes),
-        mimetype=_guess_mime(original_name),
-        as_attachment=True,
-        download_name=original_name,
-    )
+    return send_file(io.BytesIO(file_bytes), mimetype=_guess_mime(original_name),
+                     as_attachment=True, download_name=original_name)
 
 
 def _html_escape(value: str) -> str:
-    """Minimal HTML escaping for a filename rendered in the share page."""
-    return (value.replace("&", "&amp;")
-                 .replace("<", "&lt;")
-                 .replace(">", "&gt;")
-                 .replace('"', "&quot;")
+    return (value.replace("&", "&amp;").replace("<", "&lt;")
+                 .replace(">", "&gt;").replace('"', "&quot;")
                  .replace("'", "&#39;"))
 
 
 @app.route("/logs")
 def logs_page():
-    return render_template("logs.html",
-                           entries=log_store.get_entries(),
-                           stats=log_store.stats())
+    return render_template("logs.html", entries=log_store.get_entries(), stats=log_store.stats())
 
 
 @app.route("/logs/download/<int:entry_id>/<subdir>/<filename>")
@@ -252,10 +220,8 @@ def logs_download(entry_id, subdir, filename):
     filename = os.path.basename(filename)
     p = log_store.get_file(entry_id, subdir, filename)
     if p is None:
-        return ("File not found — server may have restarted. "
-                "Set LOG_DIR to a persistent path to keep files.", 404)
-    return send_file(str(p), mimetype=_guess_mime(filename),
-                     as_attachment=True, download_name=filename)
+        return ("File not found — server may have restarted. Set LOG_DIR to a persistent path to keep files.", 404)
+    return send_file(str(p), mimetype=_guess_mime(filename), as_attachment=True, download_name=filename)
 
 
 @app.route("/logs/clear", methods=["POST"])
@@ -268,19 +234,18 @@ def logs_clear():
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
-
 def _guess_mime(filename: str) -> str:
     ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
     return {
-        "pdf":  "application/pdf",
-        "zip":  "application/zip",
-        "png":  "image/png",
-        "jpg":  "image/jpeg",
+        "pdf": "application/pdf",
+        "zip": "application/zip",
+        "png": "image/png",
+        "jpg": "image/jpeg",
         "jpeg": "image/jpeg",
-        "gif":  "image/gif",
-        "mp4":  "video/mp4",
-        "mp3":  "audio/mpeg",
-        "txt":  "text/plain",
+        "gif": "image/gif",
+        "mp4": "video/mp4",
+        "mp3": "audio/mpeg",
+        "txt": "text/plain",
         "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     }.get(ext, "application/octet-stream")
