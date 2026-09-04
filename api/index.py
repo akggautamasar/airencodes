@@ -30,8 +30,8 @@ def _ctx():
 
 @app.route("/")
 def index():
-    # Keep the existing UI/template intact, but add a first-class share-link
-    # decoder control to the Decode card without requiring a template rewrite.
+    # Add share-link decoding to the existing Decode UI. Share links themselves
+    # never decode the file; decoding happens only through this website UI.
     html = render_template("index.html")
     marker = '<div class="dz" id="dec-dz">'
     inject = '''<div class="link-decoder" id="share-link-decoder">
@@ -72,11 +72,11 @@ async function decodeShareLink(){
   }
   const slug=url.pathname.split('/')[2];
   const password=document.getElementById('dec-pw')?.value||'';
-  btn.disabled=true;status.className='share-link-status busy';status.textContent='Fetching, decoding and verifying…';
+  btn.disabled=true;status.className='share-link-status busy';status.textContent='Fetching encoded data, decoding and verifying…';
   try{
     const fd=new FormData();if(password)fd.append('password',password);
     const r=await fetch('/s/'+encodeURIComponent(slug)+'/decode',{method:'POST',body:fd});
-    if(!r.ok){const j=await r.json().catch(()=>({error:'Server error'}));status.className='share-link-status err';status.textContent='✗ '+(j.error||'Unable to decode this link.');return;}
+    if(!r.ok){const j=await r.json().catch(()=>({error:'Server error'}));status.className='share-link-status err';status.textContent='✗ '+(j.error||'Unable to decode this share.');return;}
     const blob=await r.blob();
     const cd=r.headers.get('Content-Disposition')||'';
     const m=cd.match(/filename="?([^";]+)"?/i);
@@ -172,17 +172,20 @@ def decode_route():
 
 @app.route("/s/<slug>")
 def share_download(slug):
+    # A share link is only an encoded-file transport URL. It NEVER decodes the
+    # original file. Decoding is available only from the main AirVault website:
+    # either upload the encoded file or paste this share link into Decode.
     filename, data = log_store.get_share(slug)
     if data is None:
         return ("This link has expired or doesn't exist. Share links last 7 days (and only survive a server restart if LOG_DIR points to persistent disk).", 404)
-    if request.args.get("download") == "1":
-        mimetype = "application/zip" if filename.endswith(".zip") else "application/octet-stream"
-        return send_file(io.BytesIO(data), mimetype=mimetype, as_attachment=True, download_name=filename)
-    return f'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AirVault — Decode shared file</title><style>*{{box-sizing:border-box}}body{{margin:0;min-height:100vh;background:#08081a;color:#e0e0ff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;display:grid;place-items:center;padding:20px}}.card{{width:min(560px,100%);background:#16163a;border:1px solid #2a2a55;border-radius:22px;padding:30px;box-shadow:0 20px 60px #0006}}h1{{margin:0 0 8px;font-size:1.65rem}}p{{color:#8888b8;line-height:1.55}}.file{{margin:20px 0;padding:15px;background:#111128;border:1px solid #2a2a55;border-radius:12px;word-break:break-word}}input{{width:100%;padding:13px 14px;background:#111128;color:#e0e0ff;border:1px solid #2a2a55;border-radius:10px;font-size:1rem;outline:none}}button{{width:100%;margin-top:14px;padding:14px;border:0;border-radius:11px;background:linear-gradient(135deg,#06b6d4,#0284c7);color:white;font-weight:800;font-size:1rem;cursor:pointer}}button:disabled{{opacity:.55;cursor:wait}}.msg{{margin-top:14px;padding:12px;border-radius:10px;display:none;line-height:1.45}}.err{{display:block;background:#ef44441a;border:1px solid #ef444455;color:#ff7777}}.ok{{display:block;background:#22c55e1a;border:1px solid #22c55e55;color:#5ee68a}}a{{color:#22d3ee}}</style></head><body><main class="card"><h1>🔓 Decode shared AirVault file</h1><p>This link contains the AirVault encoded data. Enter the password if required, then decode and download the verified original file.</p><div class="file">📦 <strong>{_html_escape(filename)}</strong><br><small>Share link expires after 7 days.</small></div><form id="f"><input id="pw" type="password" placeholder="Password (only if encrypted)" autocomplete="current-password"><button id="b">🔓 Decode & download original</button></form><div id="m" class="msg"></div><p><a href="/">← Back to AirVault</a></p><script>const form=document.getElementById('f'),pw=document.getElementById('pw'),b=document.getElementById('b'),m=document.getElementById('m');form.addEventListener('submit',async e=>{{e.preventDefault();b.disabled=true;m.className='msg';m.textContent='Decoding and verifying…';m.style.display='block';const fd=new FormData();if(pw.value)fd.append('password',pw.value);try{{const r=await fetch(location.pathname+'/decode',{{method:'POST',body:fd}});if(!r.ok){{const j=await r.json().catch(()=>({{error:'Server error'}}));m.className='msg err';m.textContent='✗ '+j.error;return}}const blob=await r.blob();const cd=r.headers.get('Content-Disposition')||'';const mm=cd.match(/filename="?([^";]+)"?/i);const name=mm?mm[1]:'decoded_file';const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),60000);m.className='msg ok';m.textContent='✓ Decoded, SHA-256 verified, and download started.'}}catch(x){{m.className='msg err';m.textContent='✗ Network error: '+x.message}}finally{{b.disabled=false}}}});</script></main></body></html>'''
+    mimetype = "application/zip" if filename.lower().endswith(".zip") else "application/octet-stream"
+    return send_file(io.BytesIO(data), mimetype=mimetype, as_attachment=True, download_name=filename)
 
 
 @app.route("/s/<slug>/decode", methods=["POST"])
 def decode_share(slug):
+    # Called by the Decode UI after the user pastes a share link. The share URL
+    # itself never performs decoding.
     filename, data = log_store.get_share(slug)
     if data is None:
         return jsonify({"error": "This share link has expired or doesn't exist."}), 404
