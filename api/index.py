@@ -24,7 +24,6 @@ def _human_size(b: int) -> str:
     return f"{b:.1f} PB"
 
 
-# inject helpers + dynamic flags into every template
 @app.context_processor
 def _ctx():
     return {
@@ -33,8 +32,6 @@ def _ctx():
         "tg_configured": tg.configured(),
     }
 
-
-# ── main app ─────────────────────────────────────────────────────────────────
 
 @app.route("/")
 def index():
@@ -61,7 +58,6 @@ def encode_route():
 
     encrypted = bool(password)
 
-    # when Telegram is active, skip writing bytes to Render disk
     try:
         log_store.log_encode(filename, data, parts,
                              encrypted=encrypted,
@@ -73,8 +69,6 @@ def encode_route():
 
     if len(parts) == 1:
         out_name, out_bytes = parts[0]
-        # application/octet-stream (not image/png): keeps the file generic so
-        # sharing it later doesn't get routed through an app's "photo" path.
         mimetype = "application/octet-stream"
     else:
         buf = io.BytesIO()
@@ -85,9 +79,6 @@ def encode_route():
         out_name  = f"{filename}.airvault.zip"
         mimetype  = "application/zip"
 
-    # Also stash the exact output bytes behind a short-lived share link, so
-    # the user can send a plain-text URL instead of the file itself when
-    # sharing later — a URL can't be recompressed by anything.
     slug = None
     try:
         slug = log_store.create_share(out_name, out_bytes)
@@ -104,6 +95,23 @@ def encode_route():
         resp.headers["X-Share-Slug"] = slug
         resp.headers["X-Share-Name"] = out_name
     return resp
+
+
+def _decode_shared_bytes(data: bytes, filename: str, password: str = None):
+    """Decode the exact bytes stored behind a share link."""
+    if filename.lower().endswith(".zip") or data[:4] == b"PK\x03\x04":
+        try:
+            with zipfile.ZipFile(io.BytesIO(data), "r") as zf:
+                names = [n for n in zf.namelist()
+                         if not n.endswith("/") and n.lower().endswith(".avlt")]
+                if not names:
+                    raise ValueError("Share archive contains no AirVault parts")
+                png_list = [zf.read(n) for n in sorted(names)]
+        except zipfile.BadZipFile:
+            raise ValueError("Shared archive is corrupted")
+    else:
+        png_list = [data]
+    return av.decode_from_pngs(png_list, password=password)
 
 
 @app.route("/decode", methods=["POST"])
@@ -151,16 +159,84 @@ def share_download(slug):
             "(and only survive a server restart if LOG_DIR points to persistent disk).",
             404,
         )
-    mimetype = "application/zip" if filename.endswith(".zip") else "application/octet-stream"
+
+    # A normal request remains a direct file download for compatibility.
+    # Add ?decode=1 to open the share-link decoder UI.
+    if request.args.get("decode") != "1":
+        mimetype = "application/zip" if filename.endswith(".zip") else "application/octet-stream"
+        return send_file(
+            io.BytesIO(data),
+            mimetype=mimetype,
+            as_attachment=True,
+            download_name=filename,
+        )
+
+    return f'''<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AirVault — Decode shared file</title>
+<style>
+*{{box-sizing:border-box}}body{{margin:0;min-height:100vh;background:#08081a;color:#e0e0ff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;display:grid;place-items:center;padding:20px}}
+.card{{width:min(560px,100%);background:#16163a;border:1px solid #2a2a55;border-radius:22px;padding:30px;box-shadow:0 20px 60px #0006}}
+h1{{margin:0 0 8px;font-size:1.65rem}}p{{color:#8888b8;line-height:1.55}}.file{{margin:20px 0;padding:15px;background:#111128;border:1px solid #2a2a55;border-radius:12px;word-break:break-word}}
+input{{width:100%;padding:13px 14px;background:#111128;color:#e0e0ff;border:1px solid #2a2a55;border-radius:10px;font-size:1rem;outline:none}}input:focus{{border-color:#6366f1}}
+button{{width:100%;margin-top:14px;padding:14px;border:0;border-radius:11px;background:linear-gradient(135deg,#06b6d4,#0284c7);color:white;font-weight:800;font-size:1rem;cursor:pointer}}button:disabled{{opacity:.55;cursor:wait}}
+.msg{{margin-top:14px;padding:12px;border-radius:10px;display:none;line-height:1.45}}.err{{display:block;background:#ef44441a;border:1px solid #ef444455;color:#ff7777}}.ok{{display:block;background:#22c55e1a;border:1px solid #22c55e55;color:#5ee68a}}
+a{{color:#22d3ee}}
+</style></head><body><main class="card">
+<h1>🔓 Decode shared AirVault file</h1>
+<p>This share link contains the original AirVault encoded file. Decode it here and download the verified original.</p>
+<div class="file">📦 <strong>{_html_escape(filename)}</strong><br><small>Share links expire after 7 days.</small></div>
+<form id="f"><input id="pw" type="password" placeholder="Password (only if encrypted)" autocomplete="current-password"><button id="b">🔓 Decode & download original</button></form>
+<div id="m" class="msg"></div>
+<p><a href="/">← Back to AirVault</a></p>
+<script>
+const form=document.getElementById('f'),pw=document.getElementById('pw'),b=document.getElementById('b'),m=document.getElementById('m');
+form.addEventListener('submit',async e=>{{e.preventDefault();b.disabled=true;m.className='msg';m.textContent='Decoding and verifying…';m.style.display='block';
+const fd=new FormData();if(pw.value)fd.append('password',pw.value);
+try{{const r=await fetch(location.pathname+'/decode',{{method:'POST',body:fd}});if(!r.ok){{const j=await r.json().catch(()=>({{error:'Server error'}}));m.className='msg err';m.textContent='✗ '+j.error;return;}}
+const blob=await r.blob();const cd=r.headers.get('Content-Disposition')||'';const mm=cd.match(/filename="?([^";]+)"?/i);const name=mm?mm[1]:'decoded_file';const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),60000);m.className='msg ok';m.textContent='✓ Decoded, SHA-256 verified, and download started.';}}catch(x){{m.className='msg err';m.textContent='✗ Network error: '+x.message;}}finally{{b.disabled=false;}}}});
+</script></main></body></html>'''
+
+
+@app.route("/s/<slug>/decode", methods=["POST"])
+def decode_share(slug):
+    filename, data = log_store.get_share(slug)
+    if data is None:
+        return jsonify({"error": "This share link has expired or doesn't exist."}), 404
+
+    password = request.form.get("password") or None
+    try:
+        original_name, file_bytes = _decode_shared_bytes(data, filename, password=password)
+    except ValueError as e:
+        msg = str(e)
+        return jsonify({"error": msg, "password_required": "password" in msg.lower()}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+    try:
+        log_store.log_decode(original_name, file_bytes,
+                             save_files=not tg.configured())
+    except Exception:
+        pass
+    tg.send_decode(original_name, file_bytes)
+
     return send_file(
-        io.BytesIO(data),
-        mimetype=mimetype,
+        io.BytesIO(file_bytes),
+        mimetype=_guess_mime(original_name),
         as_attachment=True,
-        download_name=filename,
+        download_name=original_name,
     )
 
 
-# ── logs ──────────────────────────────────────────────────────────────────────
+def _html_escape(value: str) -> str:
+    """Minimal HTML escaping for a filename rendered in the share page."""
+    return (value.replace("&", "&amp;")
+                 .replace("<", "&lt;")
+                 .replace(">", "&gt;")
+                 .replace('"', "&quot;")
+                 .replace("'", "&#39;"))
+
 
 @app.route("/logs")
 def logs_page():
