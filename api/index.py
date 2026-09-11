@@ -28,6 +28,43 @@ def _ctx():
     return {"human": _human_size, "log_dir": os.environ.get("LOG_DIR", "/tmp/airvault_logs"), "tg_configured": tg.configured()}
 
 
+@app.errorhandler(413)
+def request_too_large(_error):
+    return jsonify({"error": "The upload is too large. Maximum request size is 500 MB."}), 413
+
+
+def _extract_airvault_parts(uploaded_files):
+    """Normalize .avlt/.png uploads and AirVault ZIP output into PNG byte strings."""
+    png_list = []
+    for f in uploaded_files:
+        if not f or not f.filename:
+            continue
+        data = f.read()
+        if not data:
+            continue
+
+        is_zip = f.filename.lower().endswith(".zip") or data[:4] == b"PK\x03\x04"
+        if is_zip:
+            try:
+                with zipfile.ZipFile(io.BytesIO(data), "r") as zf:
+                    names = sorted(
+                        n for n in zf.namelist()
+                        if not n.endswith("/") and n.lower().endswith(".avlt")
+                    )
+                    if not names:
+                        raise ValueError("ZIP archive contains no AirVault .avlt parts")
+                    for name in names:
+                        part = zf.read(name)
+                        if not part:
+                            raise ValueError(f"AirVault part '{os.path.basename(name)}' is empty")
+                        png_list.append(part)
+            except zipfile.BadZipFile:
+                raise ValueError("The uploaded ZIP archive is corrupted")
+        else:
+            png_list.append(data)
+    return png_list
+
+
 @app.route("/")
 def index():
     # Add share-link decoding to the existing Decode UI. Share links themselves
@@ -118,7 +155,7 @@ def encode_route():
         mimetype = "application/octet-stream"
     else:
         buf = io.BytesIO()
-        with zipfile.ZipFile(buf, "w", zipfile.ZIP_STORED) as zf:
+        with zipfile.ZipFile(buf, "w", compression=zipfile.ZIP_STORED) as zf:
             for png_name, png_bytes in parts:
                 zf.writestr(png_name, png_bytes)
         out_bytes = buf.getvalue(); out_name = f"{filename}.airvault.zip"; mimetype = "application/zip"
@@ -153,9 +190,12 @@ def _decode_shared_bytes(data: bytes, filename: str, password: str = None):
 def decode_route():
     files = request.files.getlist("files")
     password = request.form.get("password") or None
-    png_list = [f.read() for f in files if f.filename]
+    try:
+        png_list = _extract_airvault_parts(files)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
     if not png_list:
-        return jsonify({"error": "No PNG files uploaded"}), 400
+        return jsonify({"error": "No AirVault file uploaded"}), 400
     try:
         filename, file_bytes = av.decode_from_pngs(png_list, password=password)
     except ValueError as e:
@@ -202,10 +242,6 @@ def decode_share(slug):
         pass
     tg.send_decode(original_name, file_bytes)
     return send_file(io.BytesIO(file_bytes), mimetype=_guess_mime(original_name), as_attachment=True, download_name=original_name)
-
-
-def _html_escape(value: str) -> str:
-    return (value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;").replace("'", "&#39;"))
 
 
 @app.route("/logs")
